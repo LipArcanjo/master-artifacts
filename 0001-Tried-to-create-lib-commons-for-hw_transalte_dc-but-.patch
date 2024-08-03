@@ -1,0 +1,1289 @@
+From 70d4ff7f3522870a39ba0a525c96c162c4d07c9a Mon Sep 17 00:00:00 2001
+From: LipArcanjo <luanicaroarcanjo@gmail.com>
+Date: Thu, 16 May 2024 20:09:30 -0300
+Subject: [PATCH] Tried to create lib commons for hw_transalte_dc but Failed
+
+This is a massive code duplication code on the amd driver codebase, but as far I know it is not possible to the high dependence on #define usage, which I don't know a way to propagate the defines to the dc_common.
+---
+ drivers/gpu/drm/amd/display/dc/gpio/Makefile  |   3 +-
+ .../gpio/dc_common/hw_translate_dc_common.c   | 139 ++++++++++++++++++
+ .../gpio/dc_common/hw_translate_dc_common.h   |  28 ++++
+ .../dc/gpio/dce110/hw_translate_dce110.c      |  87 +----------
+ .../dc/gpio/dce120/hw_translate_dce120.c      |  87 +----------
+ .../dc/gpio/dce60/hw_translate_dce60.c        |  87 +----------
+ .../dc/gpio/dce80/hw_translate_dce80.c        |  87 +----------
+ .../dc/gpio/dcn10/hw_translate_dcn10.c        |  87 +----------
+ .../dc/gpio/dcn20/hw_translate_dcn20.c        |  74 +---------
+ .../dc/gpio/dcn21/hw_translate_dcn21.c        |  80 +---------
+ .../dc/gpio/dcn30/hw_translate_dcn30.c        |  76 +---------
+ .../dc/gpio/dcn315/hw_translate_dcn315.c      |  74 +---------
+ .../dc/gpio/dcn32/hw_translate_dcn32.c        |  68 +--------
+ 13 files changed, 224 insertions(+), 753 deletions(-)
+ create mode 100644 drivers/gpu/drm/amd/display/dc/gpio/dc_common/hw_translate_dc_common.c
+ create mode 100644 drivers/gpu/drm/amd/display/dc/gpio/dc_common/hw_translate_dc_common.h
+
+diff --git a/drivers/gpu/drm/amd/display/dc/gpio/Makefile b/drivers/gpu/drm/amd/display/dc/gpio/Makefile
+index bc47481a158e..c6c9b6400dae 100644
+--- a/drivers/gpu/drm/amd/display/dc/gpio/Makefile
++++ b/drivers/gpu/drm/amd/display/dc/gpio/Makefile
+@@ -24,7 +24,8 @@
+ # It provides the control and status of HW GPIO pins.
+ 
+ GPIO = gpio_base.o gpio_service.o hw_factory.o \
+-       hw_gpio.o hw_hpd.o hw_ddc.o hw_generic.o hw_translate.o
++       hw_gpio.o hw_hpd.o hw_ddc.o hw_generic.o hw_translate.o \
++	   dc_common/hw_translate_dc_common.o
+ 
+ AMD_DAL_GPIO = $(addprefix $(AMDDALPATH)/dc/gpio/,$(GPIO))
+ 
+diff --git a/drivers/gpu/drm/amd/display/dc/gpio/dc_common/hw_translate_dc_common.c b/drivers/gpu/drm/amd/display/dc/gpio/dc_common/hw_translate_dc_common.c
+new file mode 100644
+index 000000000000..685006144b21
+--- /dev/null
++++ b/drivers/gpu/drm/amd/display/dc/gpio/dc_common/hw_translate_dc_common.c
+@@ -0,0 +1,139 @@
++#include "hw_translate_dc_common.h"
++#include "dm_services.h"
++#include "include/gpio_types.h"
++#include "../hw_translate.h"
++
++
++bool offset_to_id_GPIO_ID_GENERIC_case(
++		uint32_t mask,
++		enum gpio_id *id,
++		uint32_t *en, 
++		bool break_to_begugger)
++{
++	*id = GPIO_ID_GENERIC;
++	switch (mask) {
++		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICA_A_MASK:
++			*en = GPIO_GENERIC_A;
++			return true;
++		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICB_A_MASK:
++			*en = GPIO_GENERIC_B;
++			return true;
++		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICC_A_MASK:
++			*en = GPIO_GENERIC_C;
++			return true;
++		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICD_A_MASK:
++			*en = GPIO_GENERIC_D;
++			return true;
++		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICE_A_MASK:
++			*en = GPIO_GENERIC_E;
++			return true;
++		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICF_A_MASK:
++			*en = GPIO_GENERIC_F;
++			return true;
++		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICG_A_MASK:
++			*en = GPIO_GENERIC_G;
++			return true;
++		default:
++			if(break_to_debugger){
++				BREAK_TO_DEBUGGER();
++			}else{
++				ASSERT_CRITICAL(false);
++/* This was a part of dcn21/hw_translate_dcn21.c */
++#ifdef PALLADIUM_SUPPORTED
++				*en = GPIO_DDC_LINE_DDC1;
++				return true;
++#endif
++			}
++			return false;
++	}
++}
++
++bool offset_to_id_GPIO_ID_HPD_case(
++		uint32_t mask,
++		enum gpio_id *id,
++		uint32_t *en,
++		bool break_to_begugger)
++{
++	*id = GPIO_ID_HPD;
++	switch (mask) {
++		case DC_GPIO_HPD_A__DC_GPIO_HPD1_A_MASK:
++			*en = GPIO_HPD_1;
++			return true;
++		case DC_GPIO_HPD_A__DC_GPIO_HPD2_A_MASK:
++			*en = GPIO_HPD_2;
++			return true;
++		case DC_GPIO_HPD_A__DC_GPIO_HPD3_A_MASK:
++			*en = GPIO_HPD_3;
++			return true;
++		case DC_GPIO_HPD_A__DC_GPIO_HPD4_A_MASK:
++			*en = GPIO_HPD_4;
++			return true;
++		case DC_GPIO_HPD_A__DC_GPIO_HPD5_A_MASK:
++			*en = GPIO_HPD_5;
++			return true;
++		case DC_GPIO_HPD_A__DC_GPIO_HPD6_A_MASK:
++			*en = GPIO_HPD_6;
++			return true;
++		default:
++			if(break_to_debugger){
++				BREAK_TO_DEBUGGER();
++			}else{
++				ASSERT_CRITICAL(false);
++			}	
++			return false;
++	}
++}
++
++bool offset_to_id_GPIO_ID_SYNC_case(
++		uint32_t mask,
++		enum gpio_id *id,
++		uint32_t *en,
++		bool break_to_begugger)
++{
++	*id = GPIO_ID_SYNC;
++	switch (mask) {
++		case DC_GPIO_SYNCA_A__DC_GPIO_HSYNCA_A_MASK:
++			*en = GPIO_SYNC_HSYNC_A;
++			return true;
++		case DC_GPIO_SYNCA_A__DC_GPIO_VSYNCA_A_MASK:
++			*en = GPIO_SYNC_VSYNC_A;
++			return true;
++		default:
++			if(break_to_debugger){
++				BREAK_TO_DEBUGGER();
++			}else{
++				ASSERT_CRITICAL(false);
++			}
++			return false;
++	}
++}
++
++bool offset_to_id_GPIO_ID_GSL_case(
++		uint32_t mask,
++		enum gpio_id *id,
++		uint32_t *en,
++		bool break_to_begugger)
++{
++	*id = GPIO_ID_GSL;
++	switch (mask) {
++		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_CLK_A_MASK:
++			*en = GPIO_GSL_GENLOCK_CLOCK;
++			return true;
++		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_VSYNC_A_MASK:
++			*en = GPIO_GSL_GENLOCK_VSYNC;
++			return true;
++		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_A_A_MASK:
++			*en = GPIO_GSL_SWAPLOCK_A;
++			return true;
++		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_B_A_MASK:
++			*en = GPIO_GSL_SWAPLOCK_B;
++			return true;
++		default:
++			if(break_to_debugger){
++				BREAK_TO_DEBUGGER();
++			}else{
++				ASSERT_CRITICAL(false);
++			}
++			return false;
++	}
++}
+diff --git a/drivers/gpu/drm/amd/display/dc/gpio/dc_common/hw_translate_dc_common.h b/drivers/gpu/drm/amd/display/dc/gpio/dc_common/hw_translate_dc_common.h
+new file mode 100644
+index 000000000000..2f893a94f07c
+--- /dev/null
++++ b/drivers/gpu/drm/amd/display/dc/gpio/dc_common/hw_translate_dc_common.h
+@@ -0,0 +1,28 @@
++#ifndef __HW_TRANSLATE_DC_COMMON_H__
++#define __HW_TRANSLATE_DC_COMMON_H__
++
++bool offset_to_id_GPIO_ID_GENERIC_case(
++		uint32_t mask,
++		enum gpio_id *id,
++		uint32_t *en, 
++		bool break_to_begugger);
++
++bool offset_to_id_GPIO_ID_HPD_case(
++		uint32_t mask,
++		enum gpio_id *id,
++		uint32_t *en,
++		bool break_to_begugger);
++
++bool offset_to_id_GPIO_ID_SYNC_case(
++		uint32_t mask,
++		enum gpio_id *id,
++		uint32_t *en,
++		bool break_to_begugger);
++
++bool offset_to_id_GPIO_ID_GSL_case(
++		uint32_t mask,
++		enum gpio_id *id,
++		uint32_t *en,
++		bool break_to_begugger);
++
++#endif /* __HW_TRANSLATE_DC_COMMON_H__ */
+diff --git a/drivers/gpu/drm/amd/display/dc/gpio/dce110/hw_translate_dce110.c b/drivers/gpu/drm/amd/display/dc/gpio/dce110/hw_translate_dce110.c
+index ac4cddbba815..b04a988b4808 100644
+--- a/drivers/gpu/drm/amd/display/dc/gpio/dce110/hw_translate_dce110.c
++++ b/drivers/gpu/drm/amd/display/dc/gpio/dce110/hw_translate_dce110.c
+@@ -36,6 +36,8 @@
+ #include "dce/dce_11_0_d.h"
+ #include "dce/dce_11_0_sh_mask.h"
+ 
++#include "../dc_common/hw_translate_dc_common.h"
++
+ static bool offset_to_id(
+ 	uint32_t offset,
+ 	uint32_t mask,
+@@ -45,96 +47,19 @@ static bool offset_to_id(
+ 	switch (offset) {
+ 	/* GENERIC */
+ 	case mmDC_GPIO_GENERIC_A:
+-		*id = GPIO_ID_GENERIC;
+-		switch (mask) {
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICA_A_MASK:
+-			*en = GPIO_GENERIC_A;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICB_A_MASK:
+-			*en = GPIO_GENERIC_B;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICC_A_MASK:
+-			*en = GPIO_GENERIC_C;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICD_A_MASK:
+-			*en = GPIO_GENERIC_D;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICE_A_MASK:
+-			*en = GPIO_GENERIC_E;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICF_A_MASK:
+-			*en = GPIO_GENERIC_F;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICG_A_MASK:
+-			*en = GPIO_GENERIC_G;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GENERIC_case(mask,id,en,false);	
+ 	break;
+ 	/* HPD */
+ 	case mmDC_GPIO_HPD_A:
+-		*id = GPIO_ID_HPD;
+-		switch (mask) {
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD1_A_MASK:
+-			*en = GPIO_HPD_1;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD2_A_MASK:
+-			*en = GPIO_HPD_2;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD3_A_MASK:
+-			*en = GPIO_HPD_3;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD4_A_MASK:
+-			*en = GPIO_HPD_4;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD5_A_MASK:
+-			*en = GPIO_HPD_5;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD6_A_MASK:
+-			*en = GPIO_HPD_6;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_HPD_case(mask,id,en,false);
+ 	break;
+ 	/* SYNCA */
+ 	case mmDC_GPIO_SYNCA_A:
+-		*id = GPIO_ID_SYNC;
+-		switch (mask) {
+-		case DC_GPIO_SYNCA_A__DC_GPIO_HSYNCA_A_MASK:
+-			*en = GPIO_SYNC_HSYNC_A;
+-			return true;
+-		case DC_GPIO_SYNCA_A__DC_GPIO_VSYNCA_A_MASK:
+-			*en = GPIO_SYNC_VSYNC_A;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_SYNC_case(mask,id,en,false);
+ 	break;
+ 	/* mmDC_GPIO_GENLK_MASK */
+ 	case mmDC_GPIO_GENLK_A:
+-		*id = GPIO_ID_GSL;
+-		switch (mask) {
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_CLK_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_CLOCK;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_VSYNC_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_VSYNC;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_A_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_A;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_B_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_B;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GSL_case(mask,id,en,false);
+ 	break;
+ 	/* DDC */
+ 	/* we don't care about the GPIO_ID for DDC
+diff --git a/drivers/gpu/drm/amd/display/dc/gpio/dce120/hw_translate_dce120.c b/drivers/gpu/drm/amd/display/dc/gpio/dce120/hw_translate_dce120.c
+index 39ef5c7dad97..fb0c969cd92e 100644
+--- a/drivers/gpu/drm/amd/display/dc/gpio/dce120/hw_translate_dce120.c
++++ b/drivers/gpu/drm/amd/display/dc/gpio/dce120/hw_translate_dce120.c
+@@ -38,6 +38,8 @@
+ #include "soc15_hw_ip.h"
+ #include "vega10_ip_offset.h"
+ 
++#include "../dc_common/hw_translate_dc_common.h"
++
+ /* begin *********************
+  * macros to expend register list macro defined in HW object header file */
+ 
+@@ -67,96 +69,19 @@ static bool offset_to_id(
+ 	switch (offset) {
+ 	/* GENERIC */
+ 	case REG(DC_GPIO_GENERIC_A):
+-		*id = GPIO_ID_GENERIC;
+-		switch (mask) {
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICA_A_MASK:
+-			*en = GPIO_GENERIC_A;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICB_A_MASK:
+-			*en = GPIO_GENERIC_B;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICC_A_MASK:
+-			*en = GPIO_GENERIC_C;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICD_A_MASK:
+-			*en = GPIO_GENERIC_D;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICE_A_MASK:
+-			*en = GPIO_GENERIC_E;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICF_A_MASK:
+-			*en = GPIO_GENERIC_F;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICG_A_MASK:
+-			*en = GPIO_GENERIC_G;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GENERIC_case(mask,id,en,false);
+ 	break;
+ 	/* HPD */
+ 	case REG(DC_GPIO_HPD_A):
+-		*id = GPIO_ID_HPD;
+-		switch (mask) {
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD1_A_MASK:
+-			*en = GPIO_HPD_1;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD2_A_MASK:
+-			*en = GPIO_HPD_2;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD3_A_MASK:
+-			*en = GPIO_HPD_3;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD4_A_MASK:
+-			*en = GPIO_HPD_4;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD5_A_MASK:
+-			*en = GPIO_HPD_5;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD6_A_MASK:
+-			*en = GPIO_HPD_6;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_HPD_case(mask,id,en,false);
+ 	break;
+ 	/* SYNCA */
+ 	case REG(DC_GPIO_SYNCA_A):
+-		*id = GPIO_ID_SYNC;
+-		switch (mask) {
+-		case DC_GPIO_SYNCA_A__DC_GPIO_HSYNCA_A_MASK:
+-			*en = GPIO_SYNC_HSYNC_A;
+-			return true;
+-		case DC_GPIO_SYNCA_A__DC_GPIO_VSYNCA_A_MASK:
+-			*en = GPIO_SYNC_VSYNC_A;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_SYNC_case(mask,id,en,false);
+ 	break;
+ 	/* REG(DC_GPIO_GENLK_MASK */
+ 	case REG(DC_GPIO_GENLK_A):
+-		*id = GPIO_ID_GSL;
+-		switch (mask) {
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_CLK_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_CLOCK;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_VSYNC_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_VSYNC;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_A_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_A;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_B_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_B;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GSL_case(mask,id,en,false);
+ 	break;
+ 	/* DDC */
+ 	/* we don't care about the GPIO_ID for DDC
+diff --git a/drivers/gpu/drm/amd/display/dc/gpio/dce60/hw_translate_dce60.c b/drivers/gpu/drm/amd/display/dc/gpio/dce60/hw_translate_dce60.c
+index 255df31ec577..a48faf426159 100644
+--- a/drivers/gpu/drm/amd/display/dc/gpio/dce60/hw_translate_dce60.c
++++ b/drivers/gpu/drm/amd/display/dc/gpio/dce60/hw_translate_dce60.c
+@@ -37,6 +37,8 @@
+ #include "dce/dce_6_0_sh_mask.h"
+ #include "smu/smu_6_0_d.h"
+ 
++#include "../dc_common/hw_translate_dc_common.h"
++
+ /*
+  * @brief
+  * Returns index of first bit (starting with LSB) which is set
+@@ -69,96 +71,19 @@ static bool offset_to_id(
+ 	switch (offset) {
+ 	/* GENERIC */
+ 	case mmDC_GPIO_GENERIC_A:
+-		*id = GPIO_ID_GENERIC;
+-		switch (mask) {
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICA_A_MASK:
+-			*en = GPIO_GENERIC_A;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICB_A_MASK:
+-			*en = GPIO_GENERIC_B;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICC_A_MASK:
+-			*en = GPIO_GENERIC_C;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICD_A_MASK:
+-			*en = GPIO_GENERIC_D;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICE_A_MASK:
+-			*en = GPIO_GENERIC_E;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICF_A_MASK:
+-			*en = GPIO_GENERIC_F;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICG_A_MASK:
+-			*en = GPIO_GENERIC_G;
+-			return true;
+-		default:
+-			BREAK_TO_DEBUGGER();
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GENERIC_case(mask,id,en,true);
+ 	break;
+ 	/* HPD */
+ 	case mmDC_GPIO_HPD_A:
+-		*id = GPIO_ID_HPD;
+-		switch (mask) {
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD1_A_MASK:
+-			*en = GPIO_HPD_1;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD2_A_MASK:
+-			*en = GPIO_HPD_2;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD3_A_MASK:
+-			*en = GPIO_HPD_3;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD4_A_MASK:
+-			*en = GPIO_HPD_4;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD5_A_MASK:
+-			*en = GPIO_HPD_5;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD6_A_MASK:
+-			*en = GPIO_HPD_6;
+-			return true;
+-		default:
+-			BREAK_TO_DEBUGGER();
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_HPD_case(mask,id,en,true);
+ 	break;
+ 	/* SYNCA */
+ 	case mmDC_GPIO_SYNCA_A:
+-		*id = GPIO_ID_SYNC;
+-		switch (mask) {
+-		case DC_GPIO_SYNCA_A__DC_GPIO_HSYNCA_A_MASK:
+-			*en = GPIO_SYNC_HSYNC_A;
+-			return true;
+-		case DC_GPIO_SYNCA_A__DC_GPIO_VSYNCA_A_MASK:
+-			*en = GPIO_SYNC_VSYNC_A;
+-			return true;
+-		default:
+-			BREAK_TO_DEBUGGER();
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_SYNC_case(mask,id,en,true);
+ 	break;
+ 	/* mmDC_GPIO_GENLK_MASK */
+ 	case mmDC_GPIO_GENLK_A:
+-		*id = GPIO_ID_GSL;
+-		switch (mask) {
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_CLK_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_CLOCK;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_VSYNC_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_VSYNC;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_A_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_A;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_B_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_B;
+-			return true;
+-		default:
+-			BREAK_TO_DEBUGGER();
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GSL_case(mask,id,en,true);
+ 	break;
+ 	/* GPIOPAD */
+ 	case mmGPIOPAD_A:
+diff --git a/drivers/gpu/drm/amd/display/dc/gpio/dce80/hw_translate_dce80.c b/drivers/gpu/drm/amd/display/dc/gpio/dce80/hw_translate_dce80.c
+index fabb9da504be..7dabfc566746 100644
+--- a/drivers/gpu/drm/amd/display/dc/gpio/dce80/hw_translate_dce80.c
++++ b/drivers/gpu/drm/amd/display/dc/gpio/dce80/hw_translate_dce80.c
+@@ -37,6 +37,8 @@
+ #include "dce/dce_8_0_sh_mask.h"
+ #include "smu/smu_7_0_1_d.h"
+ 
++#include "../dc_common/hw_translate_dc_common.h"
++
+ /*
+  * @brief
+  * Returns index of first bit (starting with LSB) which is set
+@@ -69,96 +71,19 @@ static bool offset_to_id(
+ 	switch (offset) {
+ 	/* GENERIC */
+ 	case mmDC_GPIO_GENERIC_A:
+-		*id = GPIO_ID_GENERIC;
+-		switch (mask) {
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICA_A_MASK:
+-			*en = GPIO_GENERIC_A;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICB_A_MASK:
+-			*en = GPIO_GENERIC_B;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICC_A_MASK:
+-			*en = GPIO_GENERIC_C;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICD_A_MASK:
+-			*en = GPIO_GENERIC_D;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICE_A_MASK:
+-			*en = GPIO_GENERIC_E;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICF_A_MASK:
+-			*en = GPIO_GENERIC_F;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICG_A_MASK:
+-			*en = GPIO_GENERIC_G;
+-			return true;
+-		default:
+-			BREAK_TO_DEBUGGER();
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GENERIC_case(mask,id,en,true);	
+ 	break;
+ 	/* HPD */
+ 	case mmDC_GPIO_HPD_A:
+-		*id = GPIO_ID_HPD;
+-		switch (mask) {
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD1_A_MASK:
+-			*en = GPIO_HPD_1;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD2_A_MASK:
+-			*en = GPIO_HPD_2;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD3_A_MASK:
+-			*en = GPIO_HPD_3;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD4_A_MASK:
+-			*en = GPIO_HPD_4;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD5_A_MASK:
+-			*en = GPIO_HPD_5;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD6_A_MASK:
+-			*en = GPIO_HPD_6;
+-			return true;
+-		default:
+-			BREAK_TO_DEBUGGER();
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_HPD_case(mask,id,en,true);
+ 	break;
+ 	/* SYNCA */
+ 	case mmDC_GPIO_SYNCA_A:
+-		*id = GPIO_ID_SYNC;
+-		switch (mask) {
+-		case DC_GPIO_SYNCA_A__DC_GPIO_HSYNCA_A_MASK:
+-			*en = GPIO_SYNC_HSYNC_A;
+-			return true;
+-		case DC_GPIO_SYNCA_A__DC_GPIO_VSYNCA_A_MASK:
+-			*en = GPIO_SYNC_VSYNC_A;
+-			return true;
+-		default:
+-			BREAK_TO_DEBUGGER();
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_SYNC_case(mask,id,en,true);
+ 	break;
+ 	/* mmDC_GPIO_GENLK_MASK */
+ 	case mmDC_GPIO_GENLK_A:
+-		*id = GPIO_ID_GSL;
+-		switch (mask) {
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_CLK_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_CLOCK;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_VSYNC_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_VSYNC;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_A_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_A;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_B_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_B;
+-			return true;
+-		default:
+-			BREAK_TO_DEBUGGER();
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GSL_case(mask,id,en,true);
+ 	break;
+ 	/* GPIOPAD */
+ 	case mmGPIOPAD_A:
+diff --git a/drivers/gpu/drm/amd/display/dc/gpio/dcn10/hw_translate_dcn10.c b/drivers/gpu/drm/amd/display/dc/gpio/dcn10/hw_translate_dcn10.c
+index fecc8688048d..b85c3cbd929f 100644
+--- a/drivers/gpu/drm/amd/display/dc/gpio/dcn10/hw_translate_dcn10.c
++++ b/drivers/gpu/drm/amd/display/dc/gpio/dcn10/hw_translate_dcn10.c
+@@ -38,6 +38,8 @@
+ #include "soc15_hw_ip.h"
+ #include "vega10_ip_offset.h"
+ 
++#include "../dc_common/hw_translate_dc_common.h"
++
+ /* begin *********************
+  * macros to expend register list macro defined in HW object header file */
+ 
+@@ -67,96 +69,19 @@ static bool offset_to_id(
+ 	switch (offset) {
+ 	/* GENERIC */
+ 	case REG(DC_GPIO_GENERIC_A):
+-		*id = GPIO_ID_GENERIC;
+-		switch (mask) {
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICA_A_MASK:
+-			*en = GPIO_GENERIC_A;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICB_A_MASK:
+-			*en = GPIO_GENERIC_B;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICC_A_MASK:
+-			*en = GPIO_GENERIC_C;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICD_A_MASK:
+-			*en = GPIO_GENERIC_D;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICE_A_MASK:
+-			*en = GPIO_GENERIC_E;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICF_A_MASK:
+-			*en = GPIO_GENERIC_F;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICG_A_MASK:
+-			*en = GPIO_GENERIC_G;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GENERIC_case(mask,id,en,false);
+ 	break;
+ 	/* HPD */
+ 	case REG(DC_GPIO_HPD_A):
+-		*id = GPIO_ID_HPD;
+-		switch (mask) {
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD1_A_MASK:
+-			*en = GPIO_HPD_1;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD2_A_MASK:
+-			*en = GPIO_HPD_2;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD3_A_MASK:
+-			*en = GPIO_HPD_3;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD4_A_MASK:
+-			*en = GPIO_HPD_4;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD5_A_MASK:
+-			*en = GPIO_HPD_5;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD6_A_MASK:
+-			*en = GPIO_HPD_6;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_HPD_case(mask,id,en,false);
+ 	break;
+ 	/* SYNCA */
+ 	case REG(DC_GPIO_SYNCA_A):
+-		*id = GPIO_ID_SYNC;
+-		switch (mask) {
+-		case DC_GPIO_SYNCA_A__DC_GPIO_HSYNCA_A_MASK:
+-			*en = GPIO_SYNC_HSYNC_A;
+-			return true;
+-		case DC_GPIO_SYNCA_A__DC_GPIO_VSYNCA_A_MASK:
+-			*en = GPIO_SYNC_VSYNC_A;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_SYNC_case(mask,id,en,false);
+ 	break;
+ 	/* REG(DC_GPIO_GENLK_MASK */
+ 	case REG(DC_GPIO_GENLK_A):
+-		*id = GPIO_ID_GSL;
+-		switch (mask) {
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_CLK_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_CLOCK;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_VSYNC_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_VSYNC;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_A_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_A;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_B_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_B;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GSL_case(mask,id,en,false);
+ 	break;
+ 	/* DDC */
+ 	/* we don't care about the GPIO_ID for DDC
+diff --git a/drivers/gpu/drm/amd/display/dc/gpio/dcn20/hw_translate_dcn20.c b/drivers/gpu/drm/amd/display/dc/gpio/dcn20/hw_translate_dcn20.c
+index 3005ee7751a0..bf0e35f45a88 100644
+--- a/drivers/gpu/drm/amd/display/dc/gpio/dcn20/hw_translate_dcn20.c
++++ b/drivers/gpu/drm/amd/display/dc/gpio/dcn20/hw_translate_dcn20.c
+@@ -37,7 +37,7 @@
+ #include "soc15_hw_ip.h"
+ #include "vega10_ip_offset.h"
+ 
+-
++#include "../dc_common/hw_translate_dc_common.h"
+ 
+ /* begin *********************
+  * macros to expend register list macro defined in HW object header file */
+@@ -71,81 +71,15 @@ static bool offset_to_id(
+ 	switch (offset) {
+ 	/* GENERIC */
+ 	case REG(DC_GPIO_GENERIC_A):
+-		*id = GPIO_ID_GENERIC;
+-		switch (mask) {
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICA_A_MASK:
+-			*en = GPIO_GENERIC_A;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICB_A_MASK:
+-			*en = GPIO_GENERIC_B;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICC_A_MASK:
+-			*en = GPIO_GENERIC_C;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICD_A_MASK:
+-			*en = GPIO_GENERIC_D;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICE_A_MASK:
+-			*en = GPIO_GENERIC_E;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICF_A_MASK:
+-			*en = GPIO_GENERIC_F;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICG_A_MASK:
+-			*en = GPIO_GENERIC_G;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GENERIC_case(mask,id,en,false);
+ 	break;
+ 	/* HPD */
+ 	case REG(DC_GPIO_HPD_A):
+-		*id = GPIO_ID_HPD;
+-		switch (mask) {
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD1_A_MASK:
+-			*en = GPIO_HPD_1;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD2_A_MASK:
+-			*en = GPIO_HPD_2;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD3_A_MASK:
+-			*en = GPIO_HPD_3;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD4_A_MASK:
+-			*en = GPIO_HPD_4;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD5_A_MASK:
+-			*en = GPIO_HPD_5;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD6_A_MASK:
+-			*en = GPIO_HPD_6;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_HPD_case(mask,id,en,false);
+ 	break;
+ 	/* REG(DC_GPIO_GENLK_MASK */
+ 	case REG(DC_GPIO_GENLK_A):
+-		*id = GPIO_ID_GSL;
+-		switch (mask) {
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_CLK_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_CLOCK;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_VSYNC_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_VSYNC;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_A_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_A;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_B_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_B;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GSL_case(mask,id,en,false);
+ 	break;
+ 	/* DDC */
+ 	/* we don't care about the GPIO_ID for DDC
+diff --git a/drivers/gpu/drm/amd/display/dc/gpio/dcn21/hw_translate_dcn21.c b/drivers/gpu/drm/amd/display/dc/gpio/dcn21/hw_translate_dcn21.c
+index d734e3a134d1..dce28c1271c2 100644
+--- a/drivers/gpu/drm/amd/display/dc/gpio/dcn21/hw_translate_dcn21.c
++++ b/drivers/gpu/drm/amd/display/dc/gpio/dcn21/hw_translate_dcn21.c
+@@ -36,7 +36,7 @@
+ #include "dcn/dcn_2_1_0_sh_mask.h"
+ #include "renoir_ip_offset.h"
+ 
+-
++#include "../dc_common/hw_translate_dc_common.h"
+ 
+ 
+ /* begin *********************
+@@ -69,86 +69,16 @@ static bool offset_to_id(
+ {
+ 	switch (offset) {
+ 	/* GENERIC */
+-	case REG(DC_GPIO_GENERIC_A):
+-		*id = GPIO_ID_GENERIC;
+-		switch (mask) {
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICA_A_MASK:
+-			*en = GPIO_GENERIC_A;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICB_A_MASK:
+-			*en = GPIO_GENERIC_B;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICC_A_MASK:
+-			*en = GPIO_GENERIC_C;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICD_A_MASK:
+-			*en = GPIO_GENERIC_D;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICE_A_MASK:
+-			*en = GPIO_GENERIC_E;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICF_A_MASK:
+-			*en = GPIO_GENERIC_F;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICG_A_MASK:
+-			*en = GPIO_GENERIC_G;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-#ifdef PALLADIUM_SUPPORTED
+-		*en = GPIO_DDC_LINE_DDC1;
+-		return true;
+-#endif
+-			return false;
+-		}
++	case REG(DC_GPIO_GENERIC_A):	
++		return offset_to_id_GPIO_ID_GENERIC_case(mask,id,en,false);
+ 	break;
+ 	/* HPD */
+ 	case REG(DC_GPIO_HPD_A):
+-		*id = GPIO_ID_HPD;
+-		switch (mask) {
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD1_A_MASK:
+-			*en = GPIO_HPD_1;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD2_A_MASK:
+-			*en = GPIO_HPD_2;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD3_A_MASK:
+-			*en = GPIO_HPD_3;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD4_A_MASK:
+-			*en = GPIO_HPD_4;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD5_A_MASK:
+-			*en = GPIO_HPD_5;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD6_A_MASK:
+-			*en = GPIO_HPD_6;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_HPD_case(mask,id,en,false);
+ 	break;
+ 	/* REG(DC_GPIO_GENLK_MASK */
+ 	case REG(DC_GPIO_GENLK_A):
+-		*id = GPIO_ID_GSL;
+-		switch (mask) {
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_CLK_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_CLOCK;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_VSYNC_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_VSYNC;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_A_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_A;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_B_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_B;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GSL_case(mask,id,en,false);
+ 	break;
+ 	/* DDC */
+ 	/* we don't care about the GPIO_ID for DDC
+diff --git a/drivers/gpu/drm/amd/display/dc/gpio/dcn30/hw_translate_dcn30.c b/drivers/gpu/drm/amd/display/dc/gpio/dcn30/hw_translate_dcn30.c
+index 49d6250037a9..87348cd380e3 100644
+--- a/drivers/gpu/drm/amd/display/dc/gpio/dcn30/hw_translate_dcn30.c
++++ b/drivers/gpu/drm/amd/display/dc/gpio/dcn30/hw_translate_dcn30.c
+@@ -32,7 +32,6 @@
+ #include "include/gpio_types.h"
+ #include "../hw_translate.h"
+ 
+-
+ #include "sienna_cichlid_ip_offset.h"
+ #include "dcn/dcn_3_0_0_offset.h"
+ #include "dcn/dcn_3_0_0_sh_mask.h"
+@@ -44,6 +43,9 @@
+ 
+ #include "mmhub/mmhub_2_0_0_offset.h"
+ #include "mmhub/mmhub_2_0_0_sh_mask.h"
++
++#include "../dc_common/hw_translate_dc_common.h"
++
+ /* begin *********************
+  * macros to expend register list macro defined in HW object header file */
+ 
+@@ -76,81 +78,15 @@ static bool offset_to_id(
+ 	switch (offset) {
+ 	/* GENERIC */
+ 	case REG(DC_GPIO_GENERIC_A):
+-		*id = GPIO_ID_GENERIC;
+-		switch (mask) {
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICA_A_MASK:
+-			*en = GPIO_GENERIC_A;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICB_A_MASK:
+-			*en = GPIO_GENERIC_B;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICC_A_MASK:
+-			*en = GPIO_GENERIC_C;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICD_A_MASK:
+-			*en = GPIO_GENERIC_D;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICE_A_MASK:
+-			*en = GPIO_GENERIC_E;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICF_A_MASK:
+-			*en = GPIO_GENERIC_F;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICG_A_MASK:
+-			*en = GPIO_GENERIC_G;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GENERIC_case(mask,id,en,false);
+ 	break;
+ 	/* HPD */
+ 	case REG(DC_GPIO_HPD_A):
+-		*id = GPIO_ID_HPD;
+-		switch (mask) {
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD1_A_MASK:
+-			*en = GPIO_HPD_1;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD2_A_MASK:
+-			*en = GPIO_HPD_2;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD3_A_MASK:
+-			*en = GPIO_HPD_3;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD4_A_MASK:
+-			*en = GPIO_HPD_4;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD5_A_MASK:
+-			*en = GPIO_HPD_5;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD6_A_MASK:
+-			*en = GPIO_HPD_6;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_HPD_case(mask,id,en,false);
+ 	break;
+ 	/* REG(DC_GPIO_GENLK_MASK */
+ 	case REG(DC_GPIO_GENLK_A):
+-		*id = GPIO_ID_GSL;
+-		switch (mask) {
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_CLK_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_CLOCK;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_VSYNC_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_VSYNC;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_A_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_A;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_B_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_B;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GSL_case(mask,id,en,false);
+ 	break;
+ 	/* DDC */
+ 	/* we don't care about the GPIO_ID for DDC
+diff --git a/drivers/gpu/drm/amd/display/dc/gpio/dcn315/hw_translate_dcn315.c b/drivers/gpu/drm/amd/display/dc/gpio/dcn315/hw_translate_dcn315.c
+index fbdaba57f718..ee4edf3a7972 100644
+--- a/drivers/gpu/drm/amd/display/dc/gpio/dcn315/hw_translate_dcn315.c
++++ b/drivers/gpu/drm/amd/display/dc/gpio/dcn315/hw_translate_dcn315.c
+@@ -32,6 +32,8 @@
+ #include "dcn/dcn_3_1_5_offset.h"
+ #include "dcn/dcn_3_1_5_sh_mask.h"
+ 
++#include "../dc_common/hw_translate_dc_common.h"
++
+ /* begin *********************
+  * macros to expend register list macro defined in HW object header file */
+ 
+@@ -71,81 +73,15 @@ static bool offset_to_id(
+ 	switch (offset) {
+ 	/* GENERIC */
+ 	case REG(DC_GPIO_GENERIC_A):
+-		*id = GPIO_ID_GENERIC;
+-		switch (mask) {
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICA_A_MASK:
+-			*en = GPIO_GENERIC_A;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICB_A_MASK:
+-			*en = GPIO_GENERIC_B;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICC_A_MASK:
+-			*en = GPIO_GENERIC_C;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICD_A_MASK:
+-			*en = GPIO_GENERIC_D;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICE_A_MASK:
+-			*en = GPIO_GENERIC_E;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICF_A_MASK:
+-			*en = GPIO_GENERIC_F;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICG_A_MASK:
+-			*en = GPIO_GENERIC_G;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GENERIC_case(mask,id,en,false);
+ 	break;
+ 	/* HPD */
+ 	case REG(DC_GPIO_HPD_A):
+-		*id = GPIO_ID_HPD;
+-		switch (mask) {
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD1_A_MASK:
+-			*en = GPIO_HPD_1;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD2_A_MASK:
+-			*en = GPIO_HPD_2;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD3_A_MASK:
+-			*en = GPIO_HPD_3;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD4_A_MASK:
+-			*en = GPIO_HPD_4;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD5_A_MASK:
+-			*en = GPIO_HPD_5;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD6_A_MASK:
+-			*en = GPIO_HPD_6;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_HPD_case(mask,id,en,false);
+ 	break;
+ 	/* REG(DC_GPIO_GENLK_MASK */
+ 	case REG(DC_GPIO_GENLK_A):
+-		*id = GPIO_ID_GSL;
+-		switch (mask) {
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_CLK_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_CLOCK;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_VSYNC_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_VSYNC;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_A_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_A;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_B_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_B;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GSL_case(mask,id,en,false);
+ 	break;
+ 	/* DDC */
+ 	/* we don't care about the GPIO_ID for DDC
+diff --git a/drivers/gpu/drm/amd/display/dc/gpio/dcn32/hw_translate_dcn32.c b/drivers/gpu/drm/amd/display/dc/gpio/dcn32/hw_translate_dcn32.c
+index 8493b9981f9e..89df0003cc2b 100644
+--- a/drivers/gpu/drm/amd/display/dc/gpio/dcn32/hw_translate_dcn32.c
++++ b/drivers/gpu/drm/amd/display/dc/gpio/dcn32/hw_translate_dcn32.c
+@@ -35,6 +35,8 @@
+ #include "dcn/dcn_3_2_0_offset.h"
+ #include "dcn/dcn_3_2_0_sh_mask.h"
+ 
++#include "../dc_common/hw_translate_dc_common.h"
++
+ #define DCN_BASE__INST0_SEG2                       0x000034C0
+ 
+ /* begin *********************
+@@ -69,75 +71,15 @@ static bool offset_to_id(
+ 	switch (offset) {
+ 	/* GENERIC */
+ 	case REG(DC_GPIO_GENERIC_A):
+-		*id = GPIO_ID_GENERIC;
+-		switch (mask) {
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICA_A_MASK:
+-			*en = GPIO_GENERIC_A;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICB_A_MASK:
+-			*en = GPIO_GENERIC_B;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICC_A_MASK:
+-			*en = GPIO_GENERIC_C;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICD_A_MASK:
+-			*en = GPIO_GENERIC_D;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICE_A_MASK:
+-			*en = GPIO_GENERIC_E;
+-			return true;
+-		case DC_GPIO_GENERIC_A__DC_GPIO_GENERICF_A_MASK:
+-			*en = GPIO_GENERIC_F;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GENERIC_case(mask,id,en,false);
+ 	break;
+ 	/* HPD */
+ 	case REG(DC_GPIO_HPD_A):
+-		*id = GPIO_ID_HPD;
+-		switch (mask) {
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD1_A_MASK:
+-			*en = GPIO_HPD_1;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD2_A_MASK:
+-			*en = GPIO_HPD_2;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD3_A_MASK:
+-			*en = GPIO_HPD_3;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD4_A_MASK:
+-			*en = GPIO_HPD_4;
+-			return true;
+-		case DC_GPIO_HPD_A__DC_GPIO_HPD5_A_MASK:
+-			*en = GPIO_HPD_5;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_HPD_case(mask,id,en,false);
+ 	break;
+ 	/* REG(DC_GPIO_GENLK_MASK */
+ 	case REG(DC_GPIO_GENLK_A):
+-		*id = GPIO_ID_GSL;
+-		switch (mask) {
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_CLK_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_CLOCK;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_GENLK_VSYNC_A_MASK:
+-			*en = GPIO_GSL_GENLOCK_VSYNC;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_A_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_A;
+-			return true;
+-		case DC_GPIO_GENLK_A__DC_GPIO_SWAPLOCK_B_A_MASK:
+-			*en = GPIO_GSL_SWAPLOCK_B;
+-			return true;
+-		default:
+-			ASSERT_CRITICAL(false);
+-			return false;
+-		}
++		return offset_to_id_GPIO_ID_GSL_case(mask,id,en,false);
+ 	break;
+ 	/* DDC */
+ 	/* we don't care about the GPIO_ID for DDC
+-- 
+2.43.0
+
